@@ -1,0 +1,808 @@
+openapi: 3.0.3
+info:
+  title: Patient Management API
+  description: API for managing patient records, insurance, and emergency contacts
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: api-support@healthcare.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: https://api.healthcare.com/v1
+    description: Production server
+  - url: https://staging-api.healthcare.com/v1
+    description: Staging server
+
+paths:
+  /patients:
+    get:
+      summary: List all patients
+      operationId: listPatients
+      tags:
+        - Patients
+      parameters:
+        - name: is_active
+          in: query
+          description: Filter by active status
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: List of patients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Patient'
+        '400':
+          description: Invalid request parameters
+        '401':
+          description: Unauthorized - Authentication required
+        '403':
+          description: Forbidden - Insufficient permissions
+        '500':
+          description: Internal server error
+    post:
+      summary: Register a new patient
+      operationId: registerPatient
+      tags:
+        - Patients
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientRequest'
+      responses:
+        '201':
+          description: Patient created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+        '400':
+          description: Invalid request data - Missing required fields or invalid format
+        '401':
+          description: Unauthorized - Authentication required
+        '403':
+          description: Forbidden - Insufficient permissions
+        '409':
+          description: Conflict - Patient with this email or patient_code already exists
+        '500':
+          description: Internal server error
+
+  /patients/{patient_id}:
+    get:
+      summary: Get patient by ID
+      operationId: getPatientById
+      tags:
+        - Patients
+      parameters:
+        - $ref: '#/components/parameters/patient_id'
+      responses:
+        '200':
+          description: Patient details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+        '400':
+          description: Invalid patient ID format
+        '401':
+          description: Unauthorized - Authentication required
+        '403':
+          description: Forbidden - Insufficient permissions
+        '404':
+          description: Patient not found
+        '500':
+          description: Internal server error
+    put:
+      summary: Update patient profile
+      operationId: updatePatientProfile
+      tags:
+        - Patients
+      parameters:
+        - $ref: '#/components/parameters/patient_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientRequest'
+      responses:
+        '200':
+          description: Patient updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+        '400':
+          description: Invalid request data or patient ID format
+        '401':
+          description: Unauthorized - Authentication required
+        '403':
+          description: Forbidden - Insufficient permissions
+        '404':
+          description: Patient not found
+        '409':
+          description: Conflict - Update would violate data constraints
+        '500':
+          description: Internal server error
+    delete:
+      summary: Deactivate patient (soft delete)
+      operationId: deactivatePatient
+      tags:
+        - Patients
+      parameters:
+        - $ref: '#/components/parameters/patient_id'
+      responses:
+        '204':
+          description: Patient deactivated (is_active set to false)
+        '400':
+          description: Invalid patient ID format
+        '401':
+          description: Unauthorized - Authentication required
+        '403':
+          description: Forbidden - Insufficient permissions
+        '404':
+          description: Patient not found
+        '409':
+          description: Conflict - Cannot deactivate patient with active appointments
+        '500':
+          description: Internal server error
+
+  /patients/{patient_id}/insurance:
+    get:
+      summary: Get insurance policies linked to a patient
+      operationId: getPatientInsurance
+      tags:
+        - Patient Insurance
+      parameters:
+        - $ref: '#/components/parameters/patient_id'
+      responses:
+        '200':
+          description: List of patient insurance links
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PatientInsuranceDetail'
+        '400':
+          description: Invalid patient ID format
+        '401':
+          description: Unauthorized - Authentication required
+        '403':
+          description: Forbidden - Insufficient permissions
+        '404':
+          description: Patient not found
+        '500':
+          description: Internal server error
+    post:
+      summary: Link an insurance policy to patient
+      operationId: linkInsuranceToPatient
+      tags:
+        - Patient Insurance
+      parameters:
+        - $ref: '#/components/parameters/patient_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientInsuranceRequest'
+      responses:
+        '201':
+          description: Insurance linked to patient
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientInsurance'
+        '400':
+          description: Invalid request data or patient ID format
+        '401':
+          description: Unauthorized - Authentication required
+        '403':
+          description: Forbidden - Insufficient permissions
+        '404':
+          description: Patient or Insurance not found
+        '409':
+          description: Conflict - Insurance policy already linked to patient
+        '500':
+          description: Internal server error
+
+  /patients/{patient_id}/insurance/{id}:
+    put:
+      summary: Update patient insurance link (e.g., change primary status)
+      operationId: updatePatientInsurance
+      tags:
+        - Patient Insurance
+      parameters:
+        - $ref: '#/components/parameters/patient_id'
+        - name: id
+          in: path
+          required: true
+          description: Patient Insurance link ID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                is_primary:
+                  type: boolean
+                  description: Whether this is the primary insurance
+      responses:
+        '200':
+          description: Patient insurance link updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientInsurance'
+        '400':
+          description: Invalid request
+        '401':
+          description: Unauthorized - Authentication required
+        '403':
+          description: Forbidden - Insufficient permissions
+        '404':
+          description: Patient insurance link not found
+        '500':
+          description: Internal server error
+    delete:
+      summary: Remove insurance link from patient
+      operationId: unlinkInsuranceFromPatient
+      tags:
+        - Patient Insurance
+      parameters:
+        - $ref: '#/components/parameters/patient_id'
+        - name: id
+          in: path
+          required: true
+          description: Patient Insurance link ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Insurance unlinked from patient
+        '400':
+          description: Invalid request
+        '401':
+          description: Unauthorized - Authentication required
+        '403':
+          description: Forbidden - Insufficient permissions
+        '404':
+          description: Patient insurance link not found
+        '500':
+          description: Internal server error
+
+  /insurance:
+    get:
+      summary: List all insurance providers
+      operationId: listInsurance
+      tags:
+        - Insurance
+      responses:
+        '200':
+          description: List of insurance providers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Insurance'
+        '401':
+          description: Unauthorized - Authentication required
+        '403':
+          description: Forbidden - Insufficient permissions
+        '500':
+          description: Internal server error
+    post:
+      summary: Create a new insurance record
+      operationId: createInsurance
+      tags:
+        - Insurance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InsuranceRequest'
+      responses:
+        '201':
+          description: Insurance created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Insurance'
+        '400':
+          description: Invalid request data
+        '401':
+          description: Unauthorized - Authentication required
+        '403':
+          description: Forbidden - Insufficient permissions
+        '409':
+          description: Conflict - Policy number already exists
+        '500':
+          description: Internal server error
+
+  /insurance/{insurance_id}:
+    get:
+      summary: Get insurance by ID
+      operationId: getInsuranceById
+      tags:
+        - Insurance
+      parameters:
+        - name: insurance_id
+          in: path
+          required: true
+          description: Insurance ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Insurance details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Insurance'
+        '400':
+          description: Invalid insurance ID format
+        '401':
+          description: Unauthorized - Authentication required
+        '403':
+          description: Forbidden - Insufficient permissions
+        '404':
+          description: Insurance not found
+        '500':
+          description: Internal server error
+
+  /patients/{patient_id}/emergency-contacts:
+    get:
+      summary: Get all emergency contacts of a patient
+      operationId: getEmergencyContacts
+      tags:
+        - Emergency Contacts
+      parameters:
+        - $ref: '#/components/parameters/patient_id'
+      responses:
+        '200':
+          description: List of emergency contacts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmergencyContact'
+        '400':
+          description: Invalid patient ID format
+        '401':
+          description: Unauthorized - Authentication required
+        '403':
+          description: Forbidden - Insufficient permissions
+        '404':
+          description: Patient not found
+        '500':
+          description: Internal server error
+    post:
+      summary: Add an emergency contact
+      operationId: addEmergencyContact
+      tags:
+        - Emergency Contacts
+      parameters:
+        - $ref: '#/components/parameters/patient_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmergencyContactRequest'
+      responses:
+        '201':
+          description: Emergency contact added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmergencyContact'
+        '400':
+          description: Invalid request data or patient ID format
+        '401':
+          description: Unauthorized - Authentication required
+        '403':
+          description: Forbidden - Insufficient permissions
+        '404':
+          description: Patient not found
+        '500':
+          description: Internal server error
+
+  /patients/{patient_id}/emergency-contacts/{contact_id}:
+    put:
+      summary: Update emergency contact
+      operationId: updateEmergencyContact
+      tags:
+        - Emergency Contacts
+      parameters:
+        - $ref: '#/components/parameters/patient_id'
+        - name: contact_id
+          in: path
+          required: true
+          description: Emergency contact ID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmergencyContactRequest'
+      responses:
+        '200':
+          description: Emergency contact updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmergencyContact'
+        '400':
+          description: Invalid request
+        '401':
+          description: Unauthorized - Authentication required
+        '403':
+          description: Forbidden - Insufficient permissions
+        '404':
+          description: Emergency contact not found
+        '500':
+          description: Internal server error
+    delete:
+      summary: Remove emergency contact
+      operationId: deleteEmergencyContact
+      tags:
+        - Emergency Contacts
+      parameters:
+        - $ref: '#/components/parameters/patient_id'
+        - name: contact_id
+          in: path
+          required: true
+          description: Emergency contact ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Emergency contact removed
+        '400':
+          description: Invalid request
+        '401':
+          description: Unauthorized - Authentication required
+        '403':
+          description: Forbidden - Insufficient permissions
+        '404':
+          description: Emergency contact not found
+        '500':
+          description: Internal server error
+
+components:
+  parameters:
+    patient_id:
+      name: patient_id
+      in: path
+      required: true
+      description: Unique identifier of the patient
+      schema:
+        type: string
+        format: uuid
+        example: "123e4567-e89b-12d3-a456-426614174000"
+
+  schemas:
+    Patient:
+      type: object
+      required:
+        - patient_id
+        - patient_code
+        - first_name
+        - last_name
+        - dob
+        - email
+      properties:
+        patient_id:
+          type: string
+          format: uuid
+          description: Unique identifier for the patient
+        patient_code:
+          type: string
+          description: Hospital-specific patient ID
+        first_name:
+          type: string
+          description: Patient's first name
+        last_name:
+          type: string
+          description: Patient's last name
+        dob:
+          type: string
+          format: date
+          description: Patient's date of birth
+        gender:
+          type: string
+          description: Patient's gender
+          enum: [male, female, other, prefer_not_to_say]
+        phone:
+          type: string
+          description: Patient's phone number
+        email:
+          type: string
+          format: email
+          description: Patient's email address
+        street:
+          type: string
+          description: Street address
+        city:
+          type: string
+          description: City
+        state:
+          type: string
+          description: State/Province
+        zip:
+          type: string
+          description: ZIP/Postal code
+        country:
+          type: string
+          description: Country
+        notification_preference:
+          type: string
+          description: Preferred notification method
+          enum: [email, sms, none]
+          default: email
+        is_active:
+          type: boolean
+          description: Whether the patient record is active
+          default: true
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when patient record was created
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp when patient record was last updated
+
+    PatientRequest:
+      type: object
+      required:
+        - patient_code
+        - first_name
+        - last_name
+        - dob
+        - email
+      properties:
+        patient_code:
+          type: string
+          description: Hospital-specific patient ID
+        first_name:
+          type: string
+          description: Patient's first name
+        last_name:
+          type: string
+          description: Patient's last name
+        dob:
+          type: string
+          format: date
+          description: Patient's date of birth
+        gender:
+          type: string
+          description: Patient's gender
+          enum: [male, female, other, prefer_not_to_say]
+        phone:
+          type: string
+          description: Patient's phone number
+        email:
+          type: string
+          format: email
+          description: Patient's email address
+        street:
+          type: string
+          description: Street address
+        city:
+          type: string
+          description: City
+        state:
+          type: string
+          description: State/Province
+        zip:
+          type: string
+          description: ZIP/Postal code
+        country:
+          type: string
+          description: Country
+        notification_preference:
+          type: string
+          description: Preferred notification method
+          enum: [email, sms, none]
+          default: email
+
+    Insurance:
+      type: object
+      required:
+        - insurance_id
+        - provider_name
+        - policy_number
+      properties:
+        insurance_id:
+          type: string
+          format: uuid
+          description: Unique identifier for the insurance
+        provider_name:
+          type: string
+          description: Insurance provider name
+        policy_number:
+          type: string
+          description: Insurance policy number (unique)
+        coverage_details:
+          type: string
+          description: Details of the insurance coverage
+        valid_till:
+          type: string
+          format: date
+          description: Insurance validity end date
+
+    InsuranceRequest:
+      type: object
+      required:
+        - provider_name
+        - policy_number
+      properties:
+        provider_name:
+          type: string
+          description: Insurance provider name
+        policy_number:
+          type: string
+          description: Insurance policy number (must be unique)
+        coverage_details:
+          type: string
+          description: Details of the insurance coverage
+        valid_till:
+          type: string
+          format: date
+          description: Insurance validity end date
+
+    PatientInsurance:
+      type: object
+      required:
+        - id
+        - patient_id
+        - insurance_id
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the patient-insurance link
+        patient_id:
+          type: string
+          format: uuid
+          description: Reference to Patient
+        insurance_id:
+          type: string
+          format: uuid
+          description: Reference to Insurance
+        is_primary:
+          type: boolean
+          description: Whether this is the primary insurance
+          default: false
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when link was created
+
+    PatientInsuranceRequest:
+      type: object
+      required:
+        - insurance_id
+      properties:
+        insurance_id:
+          type: string
+          format: uuid
+          description: ID of existing insurance to link
+        is_primary:
+          type: boolean
+          description: Whether this is the primary insurance
+          default: false
+
+    PatientInsuranceDetail:
+      type: object
+      description: Detailed view of patient insurance including insurance details
+      required:
+        - id
+        - patient_id
+        - insurance
+        - is_primary
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the patient-insurance link
+        patient_id:
+          type: string
+          format: uuid
+          description: Reference to Patient
+        insurance:
+          $ref: '#/components/schemas/Insurance'
+        is_primary:
+          type: boolean
+          description: Whether this is the primary insurance
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when link was created
+
+    EmergencyContact:
+      type: object
+      required:
+        - contact_id
+        - name
+        - relationship
+        - phone
+        - patient_id
+      properties:
+        contact_id:
+          type: string
+          format: uuid
+          description: Unique identifier for the emergency contact
+        name:
+          type: string
+          description: Contact person's name
+        relationship:
+          type: string
+          description: Relationship to patient
+        phone:
+          type: string
+          description: Contact phone number
+        patient_id:
+          type: string
+          format: uuid
+          description: Reference to Patient
+
+    EmergencyContactRequest:
+      type: object
+      required:
+        - name
+        - relationship
+        - phone
+      properties:
+        name:
+          type: string
+          description: Contact person's name
+        relationship:
+          type: string
+          description: Relationship to patient
+        phone:
+          type: string
+          description: Contact phone number
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Patients
+    description: Patient management operations
+  - name: Insurance
+    description: Insurance provider management
+  - name: Patient Insurance
+    description: Patient-Insurance relationship management
+  - name: Emergency Contacts
+    description: Emergency contact management

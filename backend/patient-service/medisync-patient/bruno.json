@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "medisync-patient",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
