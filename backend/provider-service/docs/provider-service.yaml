@@ -1,0 +1,594 @@
+openapi: 3.0.3
+info:
+  title: MediSync Provider Service API
+  description: API for managing healthcare providers, their availability, specialties, and schedules
+  version: 2.0.1
+  contact:
+    name: API Support
+    email: api-support@medisync.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: https://api.medisync.com/v1
+    description: Production server
+  - url: https://staging-api.medisync.com/v1
+    description: Staging server
+  - url: http://localhost:8081/api
+    description: Local development server
+
+paths:
+  /providers:
+    get:
+      summary: List all providers
+      operationId: listProviders
+      tags:
+        - Providers
+      parameters:
+        - name: specialty_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: gender
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of providers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Provider'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+    post:
+      summary: Register a new provider
+      operationId: registerProvider
+      tags:
+        - Providers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderRequest'
+      responses:
+        '201':
+          description: Provider created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Provider'
+
+  /providers/{provider_id}:
+    get:
+      summary: Get provider by ID
+      operationId: getProviderById
+      tags:
+        - Providers
+      parameters:
+        - $ref: '#/components/parameters/provider_id'
+      responses:
+        '200':
+          description: Provider details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Provider'
+
+    put:
+      summary: Update provider profile
+      operationId: updateProviderProfile
+      tags:
+        - Providers
+      parameters:
+        - $ref: '#/components/parameters/provider_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderRequest'
+      responses:
+        '200':
+          description: Provider updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Provider'
+
+    delete:
+      summary: Delete provider
+      operationId: deleteProvider
+      tags:
+        - Providers
+      parameters:
+        - $ref: '#/components/parameters/provider_id'
+      responses:
+        '204':
+          description: Provider deleted successfully
+
+  /specialties:
+    get:
+      summary: List all specialties
+      operationId: listSpecialties
+      tags:
+        - Specialties
+      responses:
+        '200':
+          description: List of specialties
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Specialty'
+
+    post:
+      summary: Create a specialty
+      operationId: createSpecialty
+      tags:
+        - Specialties
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpecialtyRequest'
+      responses:
+        '201':
+          description: Specialty created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Specialty'
+
+  /specialties/{specialty_id}:
+    get:
+      summary: Get specialty by ID
+      operationId: getSpecialtyById
+      tags:
+        - Specialties
+      parameters:
+        - name: specialty_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Specialty details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Specialty'
+
+    put:
+      summary: Update specialty
+      operationId: updateSpecialty
+      tags:
+        - Specialties
+      parameters:
+        - name: specialty_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpecialtyRequest'
+      responses:
+        '200':
+          description: Specialty updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Specialty'
+
+    delete:
+      summary: Delete specialty
+      operationId: deleteSpecialty
+      tags:
+        - Specialties
+      parameters:
+        - name: specialty_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Specialty deleted
+
+  /providers/{provider_id}/specialties:
+    get:
+      summary: Get provider specialties
+      operationId: getProviderSpecialties
+      tags:
+        - Provider Specialties
+      parameters:
+        - $ref: '#/components/parameters/provider_id'
+      responses:
+        '200':
+          description: List of provider specialties
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProviderSpecialty'
+
+    post:
+      summary: Assign specialties to provider
+      operationId: assignSpecialtiesToProvider
+      tags:
+        - Provider Specialties
+      parameters:
+        - $ref: '#/components/parameters/provider_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                specialty_ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '201':
+          description: Specialties assigned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProviderSpecialty'
+
+  /providers/{provider_id}/availability:
+    get:
+      summary: Get provider availability
+      operationId: getProviderAvailability
+      tags:
+        - Provider Availability
+      parameters:
+        - $ref: '#/components/parameters/provider_id'
+      responses:
+        '200':
+          description: Weekly availability slots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Availability'
+
+    post:
+      summary: Add availability slot
+      operationId: addAvailabilitySlot
+      tags:
+        - Provider Availability
+      parameters:
+        - $ref: '#/components/parameters/provider_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AvailabilityRequest'
+      responses:
+        '201':
+          description: Availability slot added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Availability'
+
+  /providers/{provider_id}/schedule-overrides:
+    get:
+      summary: Get provider schedule overrides
+      operationId: getScheduleOverrides
+      tags:
+        - Schedule Overrides
+      parameters:
+        - $ref: '#/components/parameters/provider_id'
+      responses:
+        '200':
+          description: List of schedule overrides
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProviderScheduleOverride'
+
+    post:
+      summary: Add schedule override
+      operationId: addScheduleOverride
+      tags:
+        - Schedule Overrides
+      parameters:
+        - $ref: '#/components/parameters/provider_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderScheduleOverrideRequest'
+      responses:
+        '201':
+          description: Schedule override created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderScheduleOverride'
+
+components:
+  parameters:
+    provider_id:
+      name: provider_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    Provider:
+      type: object
+      required:
+        - provider_id
+        - first_name
+        - last_name
+        - email
+        - created_at
+        - updated_at
+      properties:
+        provider_id:
+          type: string
+          format: uuid
+        first_name:
+          type: string
+          maxLength: 100
+        last_name:
+          type: string
+          maxLength: 100
+        email:
+          type: string
+          format: email
+          maxLength: 150
+        phone:
+          type: string
+          maxLength: 20
+        gender:
+          type: string
+          maxLength: 20
+        date_of_birth:
+          type: string
+          format: date
+        years_of_experience:
+          type: integer
+          minimum: 0
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ProviderRequest:
+      type: object
+      required:
+        - first_name
+        - last_name
+        - email
+      properties:
+        first_name:
+          type: string
+          maxLength: 100
+        last_name:
+          type: string
+          maxLength: 100
+        email:
+          type: string
+          format: email
+          maxLength: 150
+        phone:
+          type: string
+          maxLength: 20
+        gender:
+          type: string
+          maxLength: 20
+        date_of_birth:
+          type: string
+          format: date
+        years_of_experience:
+          type: integer
+          minimum: 0
+
+    Specialty:
+      type: object
+      required:
+        - specialty_id
+        - name
+      properties:
+        specialty_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+
+    SpecialtyRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+
+    ProviderSpecialty:
+      type: object
+      required:
+        - provider_specialty_id
+        - provider_id
+        - specialty_id
+      properties:
+        provider_specialty_id:
+          type: string
+          format: uuid
+        provider_id:
+          type: string
+          format: uuid
+        specialty_id:
+          type: string
+          format: uuid
+        specialty:
+          $ref: '#/components/schemas/Specialty'
+
+    Availability:
+      type: object
+      required:
+        - availability_id
+        - provider_id
+        - day_of_week
+        - start_time
+        - end_time
+        - is_active
+      properties:
+        availability_id:
+          type: string
+          format: uuid
+        provider_id:
+          type: string
+          format: uuid
+        day_of_week:
+          type: string
+          enum: [MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY]
+          maxLength: 15
+        start_time:
+          type: string
+          format: time
+        end_time:
+          type: string
+          format: time
+        is_active:
+          type: boolean
+          default: true
+
+    AvailabilityRequest:
+      type: object
+      required:
+        - day_of_week
+        - start_time
+        - end_time
+        - is_active
+      properties:
+        day_of_week:
+          type: string
+          enum: [MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY]
+        start_time:
+          type: string
+          format: time
+        end_time:
+          type: string
+          format: time
+        is_active:
+          type: boolean
+          default: true
+
+    ProviderScheduleOverride:
+      type: object
+      required:
+        - override_id
+        - provider_id
+        - date
+        - available
+      properties:
+        override_id:
+          type: string
+          format: uuid
+        provider_id:
+          type: string
+          format: uuid
+        date:
+          type: string
+          format: date
+        available:
+          type: boolean
+        start_time:
+          type: string
+          format: time
+          nullable: true
+        end_time:
+          type: string
+          format: time
+          nullable: true
+
+    ProviderScheduleOverrideRequest:
+      type: object
+      required:
+        - date
+        - available
+      properties:
+        date:
+          type: string
+          format: date
+        available:
+          type: boolean
+        start_time:
+          type: string
+          format: time
+          nullable: true
+        end_time:
+          type: string
+          format: time
+          nullable: true
+
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        total_pages:
+          type: integer
+        has_next:
+          type: boolean
+        has_previous:
+          type: boolean
